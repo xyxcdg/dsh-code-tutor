@@ -865,7 +865,13 @@ function activate(context) {
   // 防刷屏/防烧钱：只在停手后触发一次；内容没变不重复；单次最多看 2 万字符。
   context.subscriptions.push(vscode.workspace.onDidChangeTextDocument((e) => {
     const cfg = vscode.workspace.getConfiguration('dshWindow');
-    if (!cfg.get('explainWhileTyping', false)) return;
+    // 只有用户「显式」把 explainWhileTyping 打开才生效（避免旧版 manifest 默认 true 把基础讲解盖掉）
+    let typingOn = false;
+    try {
+      const ins = cfg.inspect('explainWhileTyping');
+      typingOn = !!(ins && (ins.globalValue === true || ins.workspaceValue === true || ins.workspaceFolderValue === true));
+    } catch (e) { typingOn = false; }
+    if (!typingOn) return;
     // 边写边讲只在走网关（秒级）时开；走 dsh 命令行约 60 秒，跟着打字触发会把上一条不断杀掉，反而永远看不到结果。
     if (!cfg.get('useGateway', true)) return;
     const doc = e.document;
