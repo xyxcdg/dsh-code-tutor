@@ -333,10 +333,32 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('dshWindow.explainFile', () => explain('file')));
   context.subscriptions.push(vscode.commands.registerCommand('dshWindow.explainSelection', () => explain('selection')));
 
+  // ---- 底部状态栏按钮：全程鼠标点，不用记任何快捷键 ----
+  const statusToggle = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+  const statusExplain = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
+  const refreshStatus = () => {
+    const on = vscode.workspace.getConfiguration('dshWindow').get('explainOnSave', true);
+    statusToggle.text = on ? '$(book) 自动讲解：开' : '$(book) 自动讲解：关';
+    statusToggle.tooltip = on ? '写完保存后，自动在右边从最基础讲解（点一下关闭）' : '自动讲解已关闭（点一下开启）';
+    statusToggle.command = 'dshWindow.toggleExplainOnSave';
+    statusToggle.backgroundColor = on ? undefined : new vscode.ThemeColor('statusBarItem.warningBackground');
+    statusToggle.show();
+    statusExplain.text = '$(comment-discussion) 讲这个文件';
+    statusExplain.tooltip = '不用快捷键：点一下就从最基础讲解当前文件';
+    statusExplain.command = 'dshWindow.explainFile';
+    statusExplain.show();
+  };
+  refreshStatus();
+  context.subscriptions.push(statusToggle, statusExplain);
+  context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((e) => {
+    if (e.affectsConfiguration('dshWindow.explainOnSave')) refreshStatus();
+  }));
+
   context.subscriptions.push(vscode.commands.registerCommand('dshWindow.toggleExplainOnSave', async () => {
     const cfg = vscode.workspace.getConfiguration('dshWindow');
     const cur = cfg.get('explainOnSave', true);
     await cfg.update('explainOnSave', !cur, vscode.ConfigurationTarget.Global);
+    refreshStatus();
     vscode.window.showInformationMessage('保存时自动讲解：' + (!cur ? '已开启' : '已关闭'));
   }));
 

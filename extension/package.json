@@ -2,7 +2,7 @@
   "name": "dsh-window",
   "displayName": "DSH 问答窗口",
   "description": "在 VS Code 内嵌 DSH 问答窗口，并在旁边从最基础讲解你正在写的代码",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "local",
   "engines": { "vscode": "^1.80.0" },
   "categories": ["Other"],

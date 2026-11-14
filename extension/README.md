@@ -2,6 +2,15 @@
 
 把本机的 DeepSeek Harness（DSH）智能体接进 VS Code：右侧「洄·讲解」面板自动从最基础讲解你正在写的代码，外加一个可停靠到编辑器最右侧的 DSH 聊天窗口。
 
+## 状态栏按钮（不用记快捷键）
+
+打开 VS Code 后，**右下角状态栏**有两个可点的按钮：
+
+- 📖 **自动讲解：开 / 关** —— 点一下切换保存时是否自动讲解（默认「开」）。
+- 💬 **讲这个文件** —— 点一下立刻讲解当前文件。
+
+所以平时只用 `Ctrl+S` 保存即可自动讲解，无需记任何快捷键。
+
 ## 命令（命令面板 `Ctrl+Shift+P`）
 
 | 命令 | 标题 | 快捷键 |
@@ -23,7 +32,7 @@
 把整个 `extension` 文件夹复制到：
 
 ```
-%USERPROFILE%\.vscode\extensions\dsh-window-0.0.2
+%USERPROFILE%\.vscode\extensions\dsh-window-0.0.3
 ```
 
 然后重启（或「开发者: 重新加载窗口」）VS Code。
