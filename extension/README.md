@@ -38,6 +38,7 @@
 | `dshWindow.useGateway` | `true` | 为否时改走 `dsh` 命令行。|
 | `dshWindow.dshPath` | `""` | `dsh.cmd` 完整路径；留空自动在默认安装位置与 PATH 里找。|
 | `dshWindow.explainOnSave` | `true` | 保存代码文件时自动讲解（同一文件内容没变不重复讲）。|
+| `dshWindow.autoOpenPanel` | `true` | 常驻：打开工作区时自动在右侧显示「洄·讲解」面板，重启 VS Code 后自动恢复。|
 | `dshWindow.explainWhileTyping` | `true` | 边写边讲：停手约 2.5 秒后自动看写到哪（内容变化才触发）。|
 
 ## 安装（手动）

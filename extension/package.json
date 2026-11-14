@@ -2,7 +2,7 @@
   "name": "dsh-window",
   "displayName": "学习讲解 + 一键运行",
   "description": "在 VS Code 里从最基础讲解你正在写的代码，并一键自动识别语言、自动挑编译器运行；可接任意 OpenAI 兼容的 AI 服务",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "publisher": "local",
   "engines": { "vscode": "^1.80.0" },
   "categories": ["Other"],
@@ -54,6 +54,11 @@
           "type": "boolean",
           "default": true,
           "description": "保存代码文件时，自动在旁边用「洄·讲解」从最基础讲解当前文件（同一文件只在内容变化时才讲解，避免重复消耗）。"
+        },
+        "dshWindow.autoOpenPanel": {
+          "type": "boolean",
+          "default": true,
+          "description": "常驻：打开工作区时自动在右侧显示「洄·讲解」面板，重启 VS Code 后也会自动恢复。关掉则不自动弹出。"
         },
         "dshWindow.explainWhileTyping": {
           "type": "boolean",

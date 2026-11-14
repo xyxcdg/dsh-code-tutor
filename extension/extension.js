@@ -289,6 +289,17 @@ vscode.postMessage({type:'ready'});
 </script>
 </body></html>`;
 
+function wirePanel(p) {
+  p.webview.html = PANEL_HTML;
+  p.webview.onDidReceiveMessage((msg) => {
+    if (msg && msg.type === 'ready' && panel) {
+      panel.webview.postMessage({ type: 'status', text: curStatus });
+      panel.webview.postMessage({ type: 'update', markdown: curMd });
+    }
+  });
+  p.onDidDispose(() => { panel = null; });
+}
+
 function ensurePanel() {
   if (panel) { panel.reveal(vscode.ViewColumn.Beside, true); return panel; }
   panel = vscode.window.createWebviewPanel(
@@ -296,14 +307,7 @@ function ensurePanel() {
     { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
     { enableScripts: true, retainContextWhenHidden: true }
   );
-  panel.webview.html = PANEL_HTML;
-  panel.webview.onDidReceiveMessage((msg) => {
-    if (msg && msg.type === 'ready' && panel) {
-      panel.webview.postMessage({ type: 'status', text: curStatus });
-      panel.webview.postMessage({ type: 'update', markdown: curMd });
-    }
-  });
-  panel.onDidDispose(() => { panel = null; });
+  wirePanel(panel);
   return panel;
 }
 
@@ -704,6 +708,26 @@ function activate(context) {
       coach('coach');
     }, 2500));
   }));
+
+  // ---- 「常驻」：重启 VS Code 后右侧「洄·讲解」面板自动恢复；打开工作区时自动常驻显示 ----
+  if (vscode.window.registerWebviewPanelSerializer) {
+    context.subscriptions.push(vscode.window.registerWebviewPanelSerializer('dshExplain', {
+      async deserializeWebviewPanel(p) { panel = p; wirePanel(p); }
+    }));
+  }
+  const autoOpenPanel = () => {
+    try {
+      const cfg = vscode.workspace.getConfiguration('dshWindow');
+      if (!cfg.get('autoOpenPanel', true)) return;
+      if (!(vscode.workspace.workspaceFolders || []).length) return;
+      ensurePanel();
+      if (!curMd) setStatus('点「运行」跑代码；保存文件或点「讲这个文件」，洄就从最基础讲给你听。');
+    } catch (e) {}
+  };
+  autoOpenPanel();
+  if (vscode.window.onDidChangeVisibleTextEditors) {
+    context.subscriptions.push(vscode.window.onDidChangeVisibleTextEditors(() => { try { autoOpenPanel(); } catch (e) {} }));
+  }
 }
 
 function deactivate() {
