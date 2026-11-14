@@ -1,0 +1,12 @@
+# 编译产物
+*.class
+*.obj
+*.o
+*.exe
+*.pdb
+*.ilk
+tempCodeRunnerFile.*
+
+# 系统文件
+.DS_Store
+Thumbs.db

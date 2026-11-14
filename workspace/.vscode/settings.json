@@ -1,0 +1,18 @@
+{
+    "files.autoSave": "afterDelay",
+    "editor.fontSize": 15,
+    "editor.tabSize": 4,
+    "editor.renderWhitespace": "boundary",
+    "editor.minimap.enabled": false,
+    "explorer.confirmDelete": false,
+    "workbench.startupEditor": "readme",
+    "code-runner.runInTerminal": true,
+    "code-runner.saveFileBeforeRun": true,
+    "code-runner.executorMap": {
+        "python": "python -u",
+        "javascript": "node",
+        "java": "cd $dir && javac -encoding UTF-8 $fileName && java $fileNameWithoutExt",
+        "c": "cd $dir && gcc $fileName -o $fileNameWithoutExt.exe && $dir$fileNameWithoutExt.exe",
+        "cpp": "cd $dir && g++ $fileName -o $fileNameWithoutExt.exe && $dir$fileNameWithoutExt.exe"
+    }
+}
