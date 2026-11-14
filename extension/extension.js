@@ -237,6 +237,15 @@ function maybeAutoDetect(doc) {
 
 const EXT_BY_LANG = { python: '.py', javascript: '.js', java: '.java', c: '.c', cpp: '.cpp', go: '.go', rust: '.rs', php: '.php', ruby: '.rb', html: '.html', css: '.css', sql: '.sql', shellscript: '.sh' };
 
+// 本机统一工具链入口：C/C++ 编译走 dev.cmd（内部调 MSVC VsDevCmd），gcc/clang 不在 PATH 时用它。
+function devChainCmd() {
+  const onPath = findOnPath(['dev']);
+  if (onPath) return onPath;
+  const fixed = 'C:\\Users\\33848\\.deepseekharness\\tools\\devchain\\dev.cmd';
+  try { if (fs.existsSync(fixed)) return fixed; } catch (_) {}
+  return '';
+}
+
 // 按语言自动挑编译器/解释器，给出可直接在终端跑的一条命令。
 function buildRunCommand(lang, file) {
   const dir = path.dirname(file);
@@ -247,8 +256,8 @@ function buildRunCommand(lang, file) {
     case 'python': { const t = findOnPath(['python', 'py', 'python3']); return t ? { command: q(t) + ' -u ' + q(file) } : { error: '没找到 Python，请先安装 Python 并重启 VS Code。' }; }
     case 'javascript': case 'javascriptreact': { const t = findOnPath(['node']); return t ? { command: q(t) + ' ' + q(file) } : { error: '没找到 Node.js，请先安装 Node.js。' }; }
     case 'java': { const jc = findOnPath(['javac']); const jr = findOnPath(['java']); if (!jc || !jr) return { error: '没找到 JDK（javac/java），请安装 JDK 17+。' }; return { command: 'cd /d ' + q(dir) + ' && ' + q(jc) + ' -encoding UTF-8 ' + q(base) + ' && ' + q(jr) + ' ' + q(stem) }; }
-    case 'c': { const t = findOnPath(['gcc', 'clang']); if (!t) return { error: '没找到 C 编译器（gcc / clang），请安装 MinGW-w64 并加入 PATH。' }; const exe = path.join(dir, stem + '.exe'); return { command: 'cd /d ' + q(dir) + ' && ' + q(t) + ' ' + q(base) + ' -o ' + q(exe) + ' && ' + q(exe) }; }
-    case 'cpp': case 'c++': { const t = findOnPath(['g++', 'clang++']); if (!t) return { error: '没找到 C++ 编译器（g++ / clang++），请安装 MinGW-w64 并加入 PATH。' }; const exe = path.join(dir, stem + '.exe'); return { command: 'cd /d ' + q(dir) + ' && ' + q(t) + ' ' + q(base) + ' -o ' + q(exe) + ' && ' + q(exe) }; }
+    case 'c': { const t = findOnPath(['gcc', 'clang']); if (t) { const exe = path.join(dir, stem + '.exe'); return { command: 'cd /d ' + q(dir) + ' && ' + q(t) + ' ' + q(base) + ' -o ' + q(exe) + ' && ' + q(exe) }; } const dev = devChainCmd(); if (dev) return { command: q(dev) + ' ' + q(file) }; return { error: '没找到 C 编译器（gcc / clang），本机请安装 MSVC Build Tools 或 MinGW-w64。' }; }
+    case 'cpp': case 'c++': { const t = findOnPath(['g++', 'clang++']); if (t) { const exe = path.join(dir, stem + '.exe'); return { command: 'cd /d ' + q(dir) + ' && ' + q(t) + ' ' + q(base) + ' -o ' + q(exe) + ' && ' + q(exe) }; } const dev = devChainCmd(); if (dev) return { command: q(dev) + ' ' + q(file) }; return { error: '没找到 C++ 编译器（g++ / clang++），本机请安装 MSVC Build Tools 或 MinGW-w64。' }; }
     case 'go': { const t = findOnPath(['go']); return t ? { command: 'cd /d ' + q(dir) + ' && ' + q(t) + ' run ' + q(base) } : { error: '没找到 Go，请安装 Go。' }; }
     case 'rust': { const t = findOnPath(['rustc']); if (!t) return { error: '没找到 rustc，请安装 Rust。' }; const exe = path.join(dir, stem + '.exe'); return { command: 'cd /d ' + q(dir) + ' && ' + q(t) + ' ' + q(base) + ' -o ' + q(exe) + ' && ' + q(exe) }; }
     case 'php': { const t = findOnPath(['php']); return t ? { command: q(t) + ' ' + q(file) } : { error: '没找到 PHP。' }; }
@@ -898,8 +907,10 @@ function activate(context) {
   if (vscode.window.registerWebviewPanelSerializer) {
     context.subscriptions.push(vscode.window.registerWebviewPanelSerializer('dshExplain', {
       async deserializeWebviewPanel(p) {
-        try { panel = p; wirePanel(p); }
-        catch (e) { try { p.dispose(); } catch (_) {} panel = null; }
+        panel = p;
+        try { wirePanel(p); }
+        catch (e) { try { p.webview.html = PANEL_HTML; } catch (_) {} }
+        return p;
       }
     }));
   }
