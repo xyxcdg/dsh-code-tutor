@@ -1,0 +1,13 @@
+# 保证 Windows 脚本在任何机器上 checkout 后仍是 CRLF（否则 cmd 可能不执行）
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+# 文本类统一 LF
+*.md  text eol=lf
+*.json text eol=lf
+*.js  text eol=lf
+*.java text eol=lf
+*.c   text eol=lf
+*.cpp text eol=lf
+*.html text eol=lf
+*.css text eol=lf
