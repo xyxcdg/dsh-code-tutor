@@ -1,43 +1,56 @@
-# dsh-window · VS Code 扩展
+# dsh-window · VS Code 扩展（学习讲解 + 一键运行）
 
-把本机的 DeepSeek Harness（DSH）智能体接进 VS Code：右侧「洄·讲解」面板自动从最基础讲解你正在写的代码，外加一个可停靠到编辑器最右侧的 DSH 聊天窗口。
+把 AI 老师接进 VS Code：右侧「洄·讲解」面板从最基础讲解你正在写的代码；一个按钮自动认出语言、自动挑编译器把代码跑起来。
 
 ## 状态栏按钮（不用记快捷键）
 
-打开 VS Code 后，**右下角状态栏**有两个可点的按钮：
+打开 VS Code 后，**右下角状态栏**有 5 个可点的按钮：
 
+- ▶ **运行** —— 自动识别当前文件语言、自动挑编译器，在终端里编译并运行。
+- 💬 **讲这个文件** —— 立刻从最基础讲解当前文件。
+- 🐞 **我卡住了** —— 看看你现在写到哪、有没有错、下一步写什么。
+- 🗨 **提问** —— 打开右侧问答窗口。
 - 📖 **自动讲解：开 / 关** —— 点一下切换保存时是否自动讲解（默认「开」）。
-- 💬 **讲这个文件** —— 点一下立刻讲解当前文件。
 
-所以平时只用 `Ctrl+S` 保存即可自动讲解，无需记任何快捷键。
+## 自动识别语言
+
+新建 / 未保存 / `.txt` 文件也能用：写了内容后自动判断语言（Python / C / C++ / Java / JS / Go / Rust / HTML / CSS / SQL…），文档语言与「运行」都跟着对。认不出时提示先保存成带后缀的文件。
 
 ## 命令（命令面板 `Ctrl+Shift+P`）
 
 | 命令 | 标题 | 快捷键 |
 |---|---|---|
-| `dshWindow.open` | DSH: 打开问答窗口 | `Ctrl+Alt+Q` |
-| `dshWindow.explainFile` | 洄: 讲解当前文件（从基础） | `Ctrl+Alt+E` |
-| `dshWindow.explainSelection` | 洄: 讲解选中代码（从基础） | `Ctrl+Alt+Shift+E` |
-| `dshWindow.toggleExplainOnSave` | 洄: 开关：保存时自动讲解 | — |
+| `dshWindow.open` | 打开问答窗口 | `Ctrl+Alt+Q` |
+| `dshWindow.run` | 运行当前文件（自动挑编译器） | `Ctrl+Alt+R` |
+| `dshWindow.explainFile` | 讲解当前文件（从基础） | `Ctrl+Alt+E` |
+| `dshWindow.explainSelection` | 讲解选中代码（从基础） | `Ctrl+Alt+Shift+E` |
+| `dshWindow.stuck` | 我卡住了 | `Ctrl+Alt+H` |
+| `dshWindow.detectLanguage` | 识别当前文件是什么语言 | — |
+| `dshWindow.toggleExplainOnSave` | 开关：保存时自动讲解 | — |
 
 ## 设置
 
 | 设置项 | 默认 | 说明 |
 |---|---|---|
+| `dshWindow.gatewayUrl` | `http://127.0.0.1:3425/v1/chat/completions` | 任意 OpenAI 兼容的 `/v1/chat/completions` 地址。可换成本机网关 / OpenAI / DeepSeek / 本地 Ollama。|
+| `dshWindow.apiKey` | `""` | 上面接口需要的密钥（可选；本机 Magpie 不用填）。|
+| `dshWindow.model` | `auto/deepseek-v4.1-flash` | 讲解用的模型 id。|
+| `dshWindow.useGateway` | `true` | 为否时改走 `dsh` 命令行。|
 | `dshWindow.dshPath` | `""` | `dsh.cmd` 完整路径；留空自动在默认安装位置与 PATH 里找。|
 | `dshWindow.explainOnSave` | `true` | 保存代码文件时自动讲解（同一文件内容没变不重复讲）。|
+| `dshWindow.explainWhileTyping` | `true` | 边写边讲：停手约 2.5 秒后自动看写到哪（内容变化才触发）。|
 
 ## 安装（手动）
 
 把整个 `extension` 文件夹复制到：
 
 ```
-%USERPROFILE%\.vscode\extensions\dsh-window-0.0.3
+%USERPROFILE%\.vscode\extensions\dsh-window-<版本>
 ```
 
-然后重启（或「开发者: 重新加载窗口」）VS Code。
+然后重启（或「开发者: 重新加载窗口」）VS Code。仓库根的 `一键安装.cmd` 会自动完成这一步。
 
 ## 依赖
 
-- 本机已安装 DeepSeek Harness（DSH）并配好可用模型。
-- 讲解走 `dsh --profile headless --json`；问答窗口走 `dsh web --port 5678`。
+- **运行 / 编译 / 语言识别**：只要本机装了对应语言的编译器/解释器（在 PATH 里），无需任何 AI。
+- **讲解 / 问答**：需要一个 OpenAI 兼容接口（`gatewayUrl`），或本机 DSH（`dshPath`）。都没有时给出配置提示，不影响运行。

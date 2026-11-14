@@ -1,8 +1,8 @@
 {
   "name": "dsh-window",
-  "displayName": "DSH 问答窗口",
-  "description": "在 VS Code 内嵌 DSH 问答窗口，并在旁边从最基础讲解你正在写的代码",
-  "version": "0.0.3",
+  "displayName": "学习讲解 + 一键运行",
+  "description": "在 VS Code 里从最基础讲解你正在写的代码，并一键自动识别语言、自动挑编译器运行；可接任意 OpenAI 兼容的 AI 服务",
+  "version": "0.0.4",
   "publisher": "local",
   "engines": { "vscode": "^1.80.0" },
   "categories": ["Other"],
@@ -11,25 +11,35 @@
     "onCommand:dshWindow.open",
     "onCommand:dshWindow.explainFile",
     "onCommand:dshWindow.explainSelection",
+    "onCommand:dshWindow.stuck",
+    "onCommand:dshWindow.run",
+    "onCommand:dshWindow.detectLanguage",
     "onCommand:dshWindow.toggleExplainOnSave"
   ],
   "main": "./extension.js",
   "contributes": {
     "commands": [
-      { "command": "dshWindow.open", "title": "打开问答窗口", "category": "DSH" },
-      { "command": "dshWindow.explainFile", "title": "讲解当前文件（从基础）", "category": "洄" },
-      { "command": "dshWindow.explainSelection", "title": "讲解选中代码（从基础）", "category": "洄" },
-      { "command": "dshWindow.toggleExplainOnSave", "title": "开关：保存时自动讲解", "category": "洄" }
+      { "command": "dshWindow.open", "title": "打开问答窗口", "category": "学习" },
+      { "command": "dshWindow.run", "title": "运行当前文件（自动挑编译器）", "category": "学习" },
+      { "command": "dshWindow.explainFile", "title": "讲解当前文件（从基础）", "category": "学习" },
+      { "command": "dshWindow.explainSelection", "title": "讲解选中代码（从基础）", "category": "学习" },
+      { "command": "dshWindow.stuck", "title": "我卡住了（看看下一步写什么）", "category": "学习" },
+      { "command": "dshWindow.detectLanguage", "title": "识别当前文件是什么语言", "category": "学习" },
+      { "command": "dshWindow.toggleExplainOnSave", "title": "开关：保存时自动讲解", "category": "学习" }
     ],
     "keybindings": [
       { "command": "dshWindow.open", "key": "ctrl+alt+q" },
+      { "command": "dshWindow.run", "key": "ctrl+alt+r" },
       { "command": "dshWindow.explainFile", "key": "ctrl+alt+e" },
-      { "command": "dshWindow.explainSelection", "key": "ctrl+alt+shift+e" }
+      { "command": "dshWindow.explainSelection", "key": "ctrl+alt+shift+e" },
+      { "command": "dshWindow.stuck", "key": "ctrl+alt+h" }
     ],
     "menus": {
       "editor/context": [
+        { "command": "dshWindow.run", "group": "navigation@9" },
         { "command": "dshWindow.explainSelection", "when": "editorHasSelection", "group": "navigation@10" },
-        { "command": "dshWindow.explainFile", "group": "navigation@11" }
+        { "command": "dshWindow.explainFile", "group": "navigation@11" },
+        { "command": "dshWindow.stuck", "group": "navigation@12" }
       ]
     },
     "configuration": {
@@ -44,6 +54,31 @@
           "type": "boolean",
           "default": true,
           "description": "保存代码文件时，自动在旁边用「洄·讲解」从最基础讲解当前文件（同一文件只在内容变化时才讲解，避免重复消耗）。"
+        },
+        "dshWindow.explainWhileTyping": {
+          "type": "boolean",
+          "default": true,
+          "description": "边写边讲：你停手约 2.5 秒后，自动看看你写到哪、有没有写错、下一步写什么（只在内容变化时触发，单文件 >2 万字符不触发，避免刷屏和浪费）。"
+        },
+        "dshWindow.useGateway": {
+          "type": "boolean",
+          "default": true,
+          "description": "讲解走本机网关直连（约 2~5 秒）。关掉则改走 dsh 命令行（约 60 秒）。"
+        },
+        "dshWindow.gatewayUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:3425/v1/chat/completions",
+          "description": "任意 OpenAI 兼容的对话接口地址（默认本机 Magpie 3425）。想用 OpenAI / DeepSeek / 本地 Ollama 等，把它改成对应的 /v1/chat/completions 地址即可。网关不通时会自动退回 dsh 命令行。"
+        },
+        "dshWindow.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "上面接口需要的密钥（可选）。本机 Magpie 一般不用填；用 OpenAI / DeepSeek 等云端服务时填你的 API Key。"
+        },
+        "dshWindow.model": {
+          "type": "string",
+          "default": "auto/deepseek-v4.1-flash",
+          "description": "讲解用的模型 id。实测 auto/deepseek-v4.1-flash 首字约 2 秒；auto/fast-model 略慢，group/group 更慢。"
         }
       }
     }
