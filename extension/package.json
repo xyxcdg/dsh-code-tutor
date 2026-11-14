@@ -14,7 +14,8 @@
     "onCommand:dshWindow.stuck",
     "onCommand:dshWindow.run",
     "onCommand:dshWindow.detectLanguage",
-    "onCommand:dshWindow.toggleExplainOnSave"
+    "onCommand:dshWindow.toggleExplainOnSave",
+    "onCommand:dshWindow.setupAI"
   ],
   "main": "./extension.js",
   "contributes": {
@@ -25,7 +26,8 @@
       { "command": "dshWindow.explainSelection", "title": "讲解选中代码（从基础）", "category": "学习" },
       { "command": "dshWindow.stuck", "title": "我卡住了（看看下一步写什么）", "category": "学习" },
       { "command": "dshWindow.detectLanguage", "title": "识别当前文件是什么语言", "category": "学习" },
-      { "command": "dshWindow.toggleExplainOnSave", "title": "开关：保存时自动讲解", "category": "学习" }
+      { "command": "dshWindow.toggleExplainOnSave", "title": "开关：保存时自动讲解", "category": "学习" },
+      { "command": "dshWindow.setupAI", "title": "设置AI（选讲解用的接口）", "category": "学习" }
     ],
     "keybindings": [
       { "command": "dshWindow.open", "key": "ctrl+alt+q" },

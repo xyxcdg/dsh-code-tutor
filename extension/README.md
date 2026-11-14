@@ -4,7 +4,7 @@
 
 ## 状态栏按钮（不用记快捷键）
 
-打开 VS Code 后，**右下角状态栏**有 5 个可点的按钮：
+打开 VS Code 后，**右下角状态栏**有 6 个可点的按钮：
 
 - ▶ **运行** —— 自动识别当前文件语言、自动挑编译器，在终端里编译并运行。
 - 💬 **讲这个文件** —— 立刻从最基础讲解当前文件。
@@ -27,6 +27,7 @@
 | `dshWindow.stuck` | 我卡住了 | `Ctrl+Alt+H` |
 | `dshWindow.detectLanguage` | 识别当前文件是什么语言 | — |
 | `dshWindow.toggleExplainOnSave` | 开关：保存时自动讲解 | — |
+| `dshWindow.setupAI` | 设置AI（选讲解用的接口） | — |
 
 ## 设置
 

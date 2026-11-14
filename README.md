@@ -48,6 +48,7 @@
 | 🐞 **我卡住了** | 看看你现在写到哪、有没有错、下一步写什么。 |
 | 🗨 **提问** | 打开右侧问答窗口，直接问基础问题。 |
 | 📖 **自动讲解：开/关** | 打开时，保存代码后自动讲解；点一下切换。 |
+| ⚙ **设置AI** | 选「讲解」用的 AI 接口（本机网关 / WorkBuddy / OpenAI(Codex) / DeepSeek / Ollama / 自定义）。不配也能运行、编译。 |
 
 **新建文件随便写也不用管后缀**：你把内容一写（或一保存），扩展会自动识别是哪种语言（Python / C / C++ / Java / JS / Go / Rust / HTML / CSS / SQL…），高亮和「运行」都跟着对。认不出时会提示你先保存成带后缀的文件（`.py`、`.c`、`.cpp`…）。
 
@@ -61,7 +62,21 @@
 | 讲解选中几行 | `Ctrl+Alt+Shift+E` |
 | 我卡住了 | `Ctrl+Alt+H` |
 
-## 四、各语言环境（按需安装）
+## 四、接你自己的 AI（WorkBuddy / Codex 都能用）
+
+「讲解」只依赖一个 **OpenAI 兼容的 `/v1/chat/completions` 接口**，跟你平时用哪个 AI 工具无关——WorkBuddy、Codex、OpenAI、DeepSeek、本机 Ollama 都能接。**一键入口：右下角 ⚙ 设置AI 按钮**（或命令面板搜「设置AI」），按提示选一个、填模型/密钥即可，不用手改 JSON。
+
+| 你在用 | 怎么配（点 ⚙ 设置AI） |
+|---|---|
+| **WorkBuddy** | 选「WorkBuddy 本地网关（端口 8792）」，模型 `group/group`，Key 填网关 key（没有可留空试）。前提是 WorkBuddy 的本地反代（wb-gateway）开着。 |
+| **Codex** | Codex 走的就是 OpenAI 接口：选「OpenAI」，填你的 OpenAI API Key（模型如 `gpt-4o-mini`），保存即可。 |
+| **DeepSeek / 通义 / 硅基流动等** | 选「自定义…」，填服务商给的 `/v1/chat/completions` 地址 + 模型 id + Key。 |
+| **只有本机 Ollama** | 选「本机 Ollama」，模型填 `ollama list` 里的名字（如 `qwen2.5:7b`），免费离线。 |
+| **不想配 AI** | 什么都不用配——**运行、编译、语言识别照常**，只是「讲解」不工作。 |
+
+> 高级：也可以直接在 VS Code 设置里改 `dshWindow.gatewayUrl` / `dshWindow.apiKey` / `dshWindow.model` 三项，效果和点按钮一样。
+
+## 五、各语言环境（按需安装）
 
 - **Python**：装 [Python](https://www.python.org/)，`python` 在 PATH。VS Code 装 `ms-python.python`。
 - **Node.js**：装 [Node.js](https://nodejs.org/)，`node` 在 PATH。
@@ -71,7 +86,7 @@
 
 > 「运行」按钮会按这个顺序在 PATH 里找：C→`gcc`/`clang`，C++→`g++`/`clang++`；找不到会给出明确的安装提示，不会静默失败。
 
-## 五、目录结构
+## 六、目录结构
 
 ```
 dsh-code-tutor/
@@ -90,7 +105,7 @@ dsh-code-tutor/
 └─ README.md
 ```
 
-## 六、它是怎么工作的
+## 七、它是怎么工作的
 
 - 扩展是一个**本地未打包扩展**（纯 JS，零 npm 依赖）。安装脚本只是复制进 VS Code 扩展目录，启动即加载。
 - **讲解**：把当前文件拼成一段「请当入门老师逐行讲」的提示，POST 到 **OpenAI 兼容接口**（`/v1/chat/completions`，流式渲染，首字通常 2~5 秒）；接口不通时自动退回本机 `dsh` 命令行。不配 AI 时给出「怎么配」的说明。
@@ -98,9 +113,9 @@ dsh-code-tutor/
 - **语言识别**：按最有辨识度的写法判断（`#include`→C/C++、`public static void main`→Java、`def`/`import`/`print(`→Python、`console.log`→JS、`func main`→Go、`fn main`→Rust、`<!DOCTYPE html>`→HTML…），宁可认不出也不猜错。
 - 全程只在本机跑；联网只用于你的 AI 接口本身。
 
-## 七、常见问题
+## 八、常见问题
 
-- **点「讲这个文件」说还没配置 AI**：在 VS Code 设置搜 `dshWindow.gatewayUrl`，填你的 OpenAI 兼容接口地址（如 `http://127.0.0.1:3425/v1/chat/completions`），再按需填 `dshWindow.model` / `dshWindow.apiKey`；或者把 `dshWindow.dshPath` 指到 `dsh.cmd`。**运行代码不需要这些。**
+- **点「讲这个文件」说还没配置 AI**：点右下角 **⚙ 设置AI** 选一个接口（WorkBuddy / OpenAI(Codex) / DeepSeek / Ollama / 自定义）填好即可；或在设置里搜 `dshWindow.gatewayUrl` 手填地址。详见「四、接你自己的 AI」。**运行代码不需要这些。**
 - **点「运行」说没找到编译器**：对应语言工具链没装或没进 PATH，见「四、各语言环境」；装完重启 VS Code。
 - **新建文件识别不出语言**：先按 `Ctrl+S` 保存成带后缀的文件（如 `a.py` / `a.cpp`），或右键用命令「识别当前文件是什么语言」。
 - **右侧没有讲解面板**：点右下角「讲这个文件」就会叫出来。

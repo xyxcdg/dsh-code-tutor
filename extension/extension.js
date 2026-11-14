@@ -587,9 +587,48 @@ function coach(mode) {
   runExplain(text, lang, fileLabel(doc), isStuck ? '卡住了' : '边写边讲', isStuck ? 'stuck' : 'coach', cursorLine);
 }
 
+// 选 AI 讲解接口：给同学用，点着选，不用手改 JSON。任何 OpenAI 兼容接口都行。
+async function setupAI() {
+  const cfg = vscode.workspace.getConfiguration('dshWindow');
+  const presets = [
+    { label: '$(server) 本机 AI 网关（Magpie，端口 3425）', description: '自带/本机已经开着就用这个', url: 'http://127.0.0.1:3425/v1/chat/completions', model: 'auto/deepseek-v4.1-flash', needKey: false },
+    { label: '$(plug) WorkBuddy 本地网关（端口 8792）', description: '用 WorkBuddy 的同学：开了本地反代就填这个', url: 'http://127.0.0.1:8792/v1/chat/completions', model: 'group/group', needKey: true },
+    { label: '$(cloud) OpenAI（Codex 同款接口，需 API Key）', description: '用 Codex 的同学：填你的 OpenAI Key 即可', url: 'https://api.openai.com/v1/chat/completions', model: 'gpt-4o-mini', needKey: true },
+    { label: '$(cloud) DeepSeek（需 API Key）', description: 'api.deepseek.com', url: 'https://api.deepseek.com/v1/chat/completions', model: 'deepseek-chat', needKey: true },
+    { label: '$(chip) 本机 Ollama（免费离线，端口 11434）', description: '要先装 Ollama 并 pull 一个模型', url: 'http://127.0.0.1:11434/v1/chat/completions', model: 'qwen2.5:7b', needKey: false },
+    { label: '$(edit) 自定义…', description: '任何 OpenAI 兼容的 /v1/chat/completions 地址', custom: true }
+  ];
+  const pick = await vscode.window.showQuickPick(presets, { placeHolder: '选一个「讲解」用的 AI 接口（不配也能运行/编译代码）' });
+  if (!pick) return;
+  let url = pick.url, model = pick.model, needKey = pick.needKey;
+  if (pick.custom) {
+    url = await vscode.window.showInputBox({ prompt: 'OpenAI 兼容的 /v1/chat/completions 地址', value: cfg.get('gatewayUrl', '') });
+    if (!url) return;
+    model = await vscode.window.showInputBox({ prompt: '模型 id', value: cfg.get('model', '') });
+    if (!model) return;
+    needKey = true;
+  } else {
+    const m = await vscode.window.showInputBox({ prompt: '模型 id（可直接回车用默认）', value: model });
+    if (m && m.trim()) model = m.trim();
+  }
+  let key = cfg.get('apiKey', '');
+  if (needKey) {
+    const k = await vscode.window.showInputBox({ prompt: 'API Key（没有就留空：讲解会失败，但「运行」照常）', password: true, value: key });
+    if (k !== undefined) key = k;
+  }
+  await cfg.update('gatewayUrl', url, vscode.ConfigurationTarget.Global);
+  await cfg.update('model', model, vscode.ConfigurationTarget.Global);
+  await cfg.update('apiKey', key || '', vscode.ConfigurationTarget.Global);
+  await cfg.update('useGateway', true, vscode.ConfigurationTarget.Global);
+  vscode.window.showInformationMessage('已保存 AI 设置：' + model + ' @ ' + url + '。现在保存文件或点「讲这个文件」就会讲。');
+}
+
 function activate(context) {
   // 预热 DSH 网页服务（不阻塞）
   ensureUrl().catch(() => {});
+
+  // 配置 AI 讲解接口：给同学用，不用手改 JSON。任何 OpenAI 兼容接口都行。
+  context.subscriptions.push(vscode.commands.registerCommand('dshWindow.setupAI', () => setupAI()));
 
   context.subscriptions.push(vscode.commands.registerCommand('dshWindow.open', async () => {
     try {
@@ -623,6 +662,11 @@ function activate(context) {
   const statusStuck = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 98);
   const statusExplain = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
   const statusAsk = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 97);
+  const statusSetup = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 96);
+  statusSetup.text = '$(gear) 设置AI';
+  statusSetup.tooltip = '不配也能运行/编译代码；点这里选「讲解」用的 AI 接口（本机网关 / WorkBuddy / Codex的OpenAI / DeepSeek / Ollama / 自定义）';
+  statusSetup.command = 'dshWindow.setupAI';
+  statusSetup.show();
   const refreshStatus = () => {
     const on = vscode.workspace.getConfiguration('dshWindow').get('explainOnSave', true);
     statusToggle.text = on ? '$(book) 自动讲解：开' : '$(book) 自动讲解：关';
@@ -648,7 +692,7 @@ function activate(context) {
     statusAsk.show();
   };
   refreshStatus();
-  context.subscriptions.push(statusToggle, statusRun, statusExplain, statusStuck, statusAsk);
+  context.subscriptions.push(statusToggle, statusRun, statusExplain, statusStuck, statusAsk, statusSetup);
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((e) => {
     if (e.affectsConfiguration('dshWindow.explainOnSave')) refreshStatus();
   }));
