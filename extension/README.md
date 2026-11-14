@@ -9,7 +9,7 @@
 - ▶ **运行** —— 自动识别当前文件语言、自动挑编译器，在终端里编译并运行。
 - 💬 **讲这个文件** —— 立刻从最基础讲解当前文件。
 - 🐞 **我卡住了** —— 看看你现在写到哪、有没有错、下一步写什么。
-- 🗨 **提问** —— 打开右侧问答窗口。
+- 🗨 **提问** —— 把光标移到右侧「洄·讲解」面板最下面的输入框，打字提问、回车发送（秒级回答，不用开浏览器）。
 - 📖 **自动讲解：开 / 关** —— 点一下切换保存时是否自动讲解（默认「开」）。
 
 ## 自动识别语言
@@ -20,7 +20,8 @@
 
 | 命令 | 标题 | 快捷键 |
 |---|---|---|
-| `dshWindow.open` | 打开问答窗口 | `Ctrl+Alt+Q` |
+| `dshWindow.ask` | 提问（在「洄·讲解」面板里问基础问题） | `Ctrl+Alt+Q` |
+| `dshWindow.open` | 打开完整 DSH 问答窗口（进阶，需要 dsh web 与鉴权） | — |
 | `dshWindow.run` | 运行当前文件（自动挑编译器） | `Ctrl+Alt+R` |
 | `dshWindow.explainFile` | 讲解当前文件（从基础） | `Ctrl+Alt+E` |
 | `dshWindow.explainSelection` | 讲解选中代码（从基础） | `Ctrl+Alt+Shift+E` |
@@ -40,7 +41,7 @@
 | `dshWindow.dshPath` | `""` | `dsh.cmd` 完整路径；留空自动在默认安装位置与 PATH 里找。|
 | `dshWindow.explainOnSave` | `true` | 保存代码文件时自动讲解（同一文件内容没变不重复讲）。|
 | `dshWindow.autoOpenPanel` | `true` | 常驻：打开工作区时自动在右侧显示「洄·讲解」面板，重启 VS Code 后自动恢复。|
-| `dshWindow.explainWhileTyping` | `true` | 边写边讲：停手约 2.5 秒后自动看写到哪（内容变化才触发）。|
+| `dshWindow.explainWhileTyping` | `false` | 边写边讲：停手约 2.5 秒后自动看写到哪（默认关，打开会覆盖掉「基础讲解」；只在走网关时生效）。|
 
 ## 安装（手动）
 

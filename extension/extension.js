@@ -29,6 +29,59 @@ function resolveDsh() {
 let webChild = null;
 let urlPromise = null;
 
+// ---- AI 接口配置：优先存扩展自己的 globalState（不依赖 VS Code 是否已注册设置项，改完刷新即可用）----
+let extCtx = null;
+const AI_DEFAULTS = { url: 'http://127.0.0.1:3425/v1/chat/completions', model: 'auto/deepseek-v4.1-flash', key: '', useGateway: true };
+function getAiConfig() {
+  const out = Object.assign({}, AI_DEFAULTS);
+  try {
+    const cfg = vscode.workspace.getConfiguration('dshWindow');
+    const cUrl = String(cfg.get('gatewayUrl', '') || '').trim();
+    const cModel = String(cfg.get('model', '') || '').trim();
+    const cKey = String(cfg.get('apiKey', '') || '').trim();
+    const cGw = cfg.get('useGateway', true);
+    if (cUrl) out.url = cUrl;
+    if (cModel) out.model = cModel;
+    if (cKey) out.key = cKey;
+    out.useGateway = (cGw !== false);
+  } catch (e) {}
+  try {
+    if (extCtx && extCtx.globalState) {
+      const s = extCtx.globalState;
+      const u = String(s.get('ai.url', '') || '').trim();
+      const m = String(s.get('ai.model', '') || '').trim();
+      const k = String(s.get('ai.key', '') || '').trim();
+      const g = s.get('ai.useGateway', undefined);
+      if (u) out.url = u;
+      if (m) out.model = m;
+      if (k) out.key = k;
+      if (typeof g === 'boolean') out.useGateway = g;
+    }
+  } catch (e) {}
+  return out;
+}
+async function saveAiConfig(url, model, key, useGateway) {
+  // 先写进扩展自己的 globalState：不依赖设置项是否注册，改完立即可用
+  try {
+    if (extCtx && extCtx.globalState) {
+      const s = extCtx.globalState;
+      await s.update('ai.url', url);
+      await s.update('ai.model', model);
+      await s.update('ai.key', key || '');
+      await s.update('ai.useGateway', !!useGateway);
+    }
+  } catch (e) {}
+  // 再尽量同步到「设置」里（有的 VS Code 会话还没注册这些项，注册了才同步，未注册跳过、不报错）
+  try {
+    const cfg = vscode.workspace.getConfiguration('dshWindow');
+    const safe = async (k, v) => { try { if (cfg.inspect && cfg.inspect(k) !== undefined) await cfg.update(k, v, vscode.ConfigurationTarget.Global); } catch (e) {} };
+    await safe('gatewayUrl', url);
+    await safe('model', model);
+    await safe('apiKey', key || '');
+    await safe('useGateway', true);
+  } catch (e) {}
+}
+
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 function portInUse(port) {
@@ -75,7 +128,7 @@ function startServer() {
     p.stderr.on('data', onData);
     p.on('error', reject);
     p.on('exit', () => { if (!url) resolve(null); });
-    setTimeout(() => { if (!url) resolve(null); }, 30000);
+    setTimeout(() => { if (!url) resolve(null); }, 90000);
   });
 }
 
@@ -229,7 +282,7 @@ const PANEL_HTML = String.raw`<!DOCTYPE html>
 <style>
   body{font-family:var(--vscode-font-family,system-ui);color:var(--vscode-foreground);background:var(--vscode-editor-background);padding:0;margin:0;}
   #hint{position:sticky;top:0;background:var(--vscode-editor-background);border-bottom:1px solid var(--vscode-panel-border,#3a3a3a);padding:8px 14px;font-size:12px;color:var(--vscode-descriptionForeground,#999);z-index:2;}
-  #content{padding:8px 18px 48px;line-height:1.75;font-size:14px;max-width:920px;}
+  #content{padding:8px 18px 220px;line-height:1.75;font-size:14px;max-width:920px;}
   h1,h2,h3,h4{color:var(--vscode-foreground);line-height:1.3;margin:1.1em 0 .5em;}
   h2{font-size:1.2em;border-bottom:1px solid var(--vscode-panel-border,#3a3a3a);padding-bottom:.25em;}
   h3{font-size:1.05em;}
@@ -241,10 +294,20 @@ const PANEL_HTML = String.raw`<!DOCTYPE html>
   pre code{background:none;padding:0;}
   strong{color:var(--vscode-textLink-foreground,#4ea1ff);}
   blockquote{border-left:3px solid var(--vscode-textLink-foreground,#4ea1ff);margin:.6em 0;padding:.2em .9em;color:var(--vscode-descriptionForeground,#aaa);}
+  #askbar{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;padding:10px 12px;background:var(--vscode-editor-background);border-top:1px solid var(--vscode-panel-border,#3a3a3a);z-index:3;}
+  #q{flex:1;resize:vertical;min-height:40px;max-height:180px;box-sizing:border-box;background:var(--vscode-input-background,#1e1e1e);color:var(--vscode-input-foreground,#ddd);border:1px solid var(--vscode-input-border,#555);border-radius:6px;padding:8px 10px;font-family:var(--vscode-font-family,system-ui);font-size:13px;line-height:1.5;}
+  #q:focus{outline:1px solid var(--vscode-focusBorder,#4ea1ff);}
+  #send{background:var(--vscode-button-background,#0e639c);color:var(--vscode-button-foreground,#fff);border:none;border-radius:6px;padding:0 18px;cursor:pointer;font-size:13px;white-space:nowrap;}
+  #send:hover{background:var(--vscode-button-hoverBackground,#1177bb);}
+  #send:disabled{opacity:.55;cursor:default;}
 </style></head>
 <body>
 <div id="hint">洄·讲解</div>
 <div id="content"></div>
+<div id="askbar">
+  <textarea id="q" placeholder="不懂就问我，比如：什么是变量？这段为什么要这么写？（回车发送，Shift+回车换行）"></textarea>
+  <button id="send">问 洄</button>
+</div>
 <script>
 var vscode=acquireVsCodeApi();
 var contentEl=document.getElementById('content');
@@ -280,10 +343,17 @@ function mdToHtml(md){
   closeList();
   return out;
 }
+var qEl=document.getElementById('q');
+var sendEl=document.getElementById('send');
+function doSend(){var t=(qEl.value||'').trim();if(!t)return;qEl.value='';vscode.postMessage({type:'ask',text:t});}
+sendEl.addEventListener('click',doSend);
+qEl.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();doSend();}});
 window.addEventListener('message',function(e){
   var m=e.data||{};
-  if(m.type==='update'){contentEl.innerHTML=mdToHtml(m.markdown||'');}
+  if(m.type==='update'){contentEl.innerHTML=mdToHtml(m.markdown||'');window.scrollTo(0,0);}
   else if(m.type==='status'){hintEl.textContent=m.text||'洄·讲解';}
+  else if(m.type==='focus'){try{qEl.focus();}catch(_){}}
+  else if(m.type==='busy'){try{sendEl.disabled=!!m.on;}catch(_){}}
 });
 vscode.postMessage({type:'ready'});
 </script>
@@ -292,16 +362,22 @@ vscode.postMessage({type:'ready'});
 function wirePanel(p) {
   p.webview.html = PANEL_HTML;
   p.webview.onDidReceiveMessage((msg) => {
-    if (msg && msg.type === 'ready' && panel) {
+    if (!msg) return;
+    if (msg.type === 'ready' && panel) {
       panel.webview.postMessage({ type: 'status', text: curStatus });
       panel.webview.postMessage({ type: 'update', markdown: curMd });
+    } else if (msg.type === 'ask' && msg.text) {
+      answerQuestion(String(msg.text)).catch(() => {});
     }
   });
-  p.onDidDispose(() => { panel = null; });
+  p.onDidDispose(() => { if (panel === p) panel = null; });
 }
 
 function ensurePanel() {
-  if (panel) { panel.reveal(vscode.ViewColumn.Beside, true); return panel; }
+  if (panel) {
+    try { panel.reveal(vscode.ViewColumn.Beside, true); return panel; }
+    catch (e) { try { panel.dispose(); } catch (_) {} panel = null; }
+  }
   panel = vscode.window.createWebviewPanel(
     'dshExplain', '洄·讲解',
     { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
@@ -389,10 +465,10 @@ const SYS_PROMPT = '你是耐心的编程入门老师，只输出 Markdown，不
 // 首字约 2 秒；网关不可用时由调用方退回 dsh 命令行。
 function gatewayAsk(prompt, onDelta) {
   return new Promise((resolve, reject) => {
-    const cfg = vscode.workspace.getConfiguration('dshWindow');
-    const rawUrl = String(cfg.get('gatewayUrl', '') || 'http://127.0.0.1:3425/v1/chat/completions').trim();
-    const model = String(cfg.get('model', '') || 'auto/deepseek-v4.1-flash').trim();
-    const apiKey = String(cfg.get('apiKey', '') || '').trim();
+    const ai = getAiConfig();
+    const rawUrl = String(ai.url || AI_DEFAULTS.url).trim();
+    const model = String(ai.model || AI_DEFAULTS.model).trim();
+    const apiKey = String(ai.key || '').trim();
     let u;
     try { u = new URL(rawUrl); } catch (e) { reject(new Error('网关地址无效')); return; }
     const body = JSON.stringify({
@@ -441,7 +517,7 @@ function gatewayAsk(prompt, onDelta) {
       res.on('end', () => { if (!done) { done = true; resolve(); } });
       res.on('error', (e) => { if (!done) { done = true; reject(e); } });
     });
-    req.setTimeout(20000, () => { req.destroy(new Error('网关超时')); });
+    req.setTimeout(45000, () => { req.destroy(new Error('网关超时')); });
     req.on('error', reject);
     req.write(body);
     req.end();
@@ -458,7 +534,7 @@ function runExplain(code, lang, fileName, label, mode, cursorLine) {
   setMd(coaching ? '*⏳ 正在看你的代码，马上给建议…*' : '*⏳ 正在从最基础讲解，稍等几秒…*');
 
   const prompt = coaching ? buildCoachPrompt(code, lang, fileName, label, mode, cursorLine || 0) : buildPrompt(code, lang, fileName, label);
-  const useGateway = vscode.workspace.getConfiguration('dshWindow').get('useGateway', true);
+  const useGateway = getAiConfig().useGateway;
   if (!useGateway) { runExplainCli(prompt, label, myRun, started); return; }
 
   let acc = '';
@@ -587,6 +663,59 @@ function coach(mode) {
   runExplain(text, lang, fileLabel(doc), isStuck ? '卡住了' : '边写边讲', isStuck ? 'stuck' : 'coach', cursorLine);
 }
 
+// ---- 面板内提问：在「洄·讲解」面板输入框里直接问，走本机网关秒级回答（不依赖 DSH 网页/鉴权）----
+function buildAskPrompt(question) {
+  const ed = vscode.window.activeTextEditor;
+  let ctx = '';
+  try {
+    if (ed && isExplainable(ed.document)) {
+      let t = ed.document.getText();
+      const clipped = t.length > 6000 ? t.slice(0, 6000) + '\n...（已截断，只作参考）' : t;
+      ctx = '\n\n（参考：我当前打开的文件是 ' + fileLabel(ed.document) + '，语言：' + langHint(ed.document) + '）\n```' + (langHint(ed.document) || 'text') + '\n' + clipped + '\n```';
+    }
+  } catch (e) {}
+  return [
+    '你是耐心的编程入门老师，正在给一个刚学编程的新手答疑。用中文 Markdown，直接回答：不寒暄、不客套、不复述我的问题。',
+    '回答结构：先一句话给结论；再分点讲清「为什么这么写」；能给例子就给一个最小、可直接运行的例子（代码用代码块）；涉及概念用大白话解释，不要假设我懂。正文 400 字以内（代码不计）。',
+    '',
+    '我的问题：' + question + ctx
+  ].join('\n');
+}
+
+async function answerQuestion(question) {
+  const myRun = ++activeRun;
+  ensurePanel();
+  const header = '## ❓ ' + question + '\n\n';
+  setStatus('洄在想…（通常 2~5 秒）');
+  setMd(header + '*⏳ 洄正在想…*');
+  try { if (panel) panel.webview.postMessage({ type: 'busy', on: true }); } catch (e) {}
+  const done = () => { try { if (panel) panel.webview.postMessage({ type: 'busy', on: false }); } catch (e) {} };
+  const prompt = buildAskPrompt(question);
+  const ai = getAiConfig();
+  if (!ai.useGateway) { runExplainCli(prompt, '提问', myRun, Date.now()); done(); return; }
+  let acc = '';
+  let lastUpd = 0;
+  const onDelta = (c) => {
+    acc += c;
+    const now = Date.now();
+    if (now - lastUpd > 120) { lastUpd = now; if (myRun === activeRun) setMd(header + acc); }
+  };
+  try {
+    await gatewayAsk(prompt, onDelta);
+    if (myRun !== activeRun) return;
+    if (!acc.trim()) { runExplainCli(prompt, '提问', myRun, Date.now()); done(); return; }
+    setMd(header + acc);
+    setStatus('回答完成');
+  } catch (err) {
+    if (myRun !== activeRun) return;
+    const why = (err && err.message) ? err.message : String(err);
+    setStatus('网关不可用（' + why + '），改用 dsh，会慢一些…');
+    runExplainCli(prompt, '提问', myRun, Date.now());
+  } finally {
+    done();
+  }
+}
+
 // 选 AI 讲解接口：给同学用，点着选，不用手改 JSON。任何 OpenAI 兼容接口都行。
 async function setupAI() {
   const cfg = vscode.workspace.getConfiguration('dshWindow');
@@ -616,16 +745,21 @@ async function setupAI() {
     const k = await vscode.window.showInputBox({ prompt: 'API Key（没有就留空：讲解会失败，但「运行」照常）', password: true, value: key });
     if (k !== undefined) key = k;
   }
-  await cfg.update('gatewayUrl', url, vscode.ConfigurationTarget.Global);
-  await cfg.update('model', model, vscode.ConfigurationTarget.Global);
-  await cfg.update('apiKey', key || '', vscode.ConfigurationTarget.Global);
-  await cfg.update('useGateway', true, vscode.ConfigurationTarget.Global);
-  vscode.window.showInformationMessage('已保存 AI 设置：' + model + ' @ ' + url + '。现在保存文件或点「讲这个文件」就会讲。');
+  await saveAiConfig(url, model, key, true);
+  vscode.window.showInformationMessage('已保存 AI 设置：' + model + ' @ ' + url + '。现在保存文件、点「讲这个文件」，或在下方面板输入框提问都行。');
 }
 
 function activate(context) {
+  extCtx = context;
   // 预热 DSH 网页服务（不阻塞）
   ensureUrl().catch(() => {});
+
+  // 提问：在「洄·讲解」面板里直接问（走本机网关，秒级，不需要打开 DSH 网页）
+  context.subscriptions.push(vscode.commands.registerCommand('dshWindow.ask', () => {
+    ensurePanel();
+    setStatus('在下面输入框里提问，回车发送');
+    try { if (panel) panel.webview.postMessage({ type: 'focus' }); } catch (e) {}
+  }));
 
   // 配置 AI 讲解接口：给同学用，不用手改 JSON。任何 OpenAI 兼容接口都行。
   context.subscriptions.push(vscode.commands.registerCommand('dshWindow.setupAI', () => setupAI()));
@@ -640,7 +774,8 @@ function activate(context) {
       if (vscode.window.tabGroups.all.length < 2) {
         try { await vscode.commands.executeCommand('workbench.action.newGroupRight'); } catch (e2) {}
       }
-      await vscode.commands.executeCommand('simpleBrowser.show', url);
+      try { await vscode.commands.executeCommand('simpleBrowser.show', url); }
+      catch (e2) { await vscode.env.openExternal(vscode.Uri.parse(url)); }
       try { await vscode.commands.executeCommand('workbench.action.moveEditorToLastGroup'); } catch (e2) {}
     } catch (e) {
       vscode.window.showErrorMessage('打开 DSH 失败：' + (e && e.message ? e.message : e));
@@ -687,8 +822,8 @@ function activate(context) {
     statusStuck.command = 'dshWindow.stuck';
     statusStuck.show();
     statusAsk.text = '$(comment) 提问';
-    statusAsk.tooltip = '不用快捷键：点一下打开问答窗口，直接问基础问题';
-    statusAsk.command = 'dshWindow.open';
+    statusAsk.tooltip = '不用快捷键：点一下，在右侧「洄·讲解」面板下面输入问题，回车发送';
+    statusAsk.command = 'dshWindow.ask';
     statusAsk.show();
   };
   refreshStatus();
@@ -722,7 +857,7 @@ function activate(context) {
       saveTimers.delete(key);
       const ed = vscode.window.activeTextEditor;
       if (!ed || ed.document.uri.toString() !== key) return;
-      coach('coach');
+      explain('file');
     }, 900));
   }));
 
@@ -730,7 +865,7 @@ function activate(context) {
   // 防刷屏/防烧钱：只在停手后触发一次；内容没变不重复；单次最多看 2 万字符。
   context.subscriptions.push(vscode.workspace.onDidChangeTextDocument((e) => {
     const cfg = vscode.workspace.getConfiguration('dshWindow');
-    if (!cfg.get('explainWhileTyping', true)) return;
+    if (!cfg.get('explainWhileTyping', false)) return;
     // 边写边讲只在走网关（秒级）时开；走 dsh 命令行约 60 秒，跟着打字触发会把上一条不断杀掉，反而永远看不到结果。
     if (!cfg.get('useGateway', true)) return;
     const doc = e.document;
@@ -756,7 +891,10 @@ function activate(context) {
   // ---- 「常驻」：重启 VS Code 后右侧「洄·讲解」面板自动恢复；打开工作区时自动常驻显示 ----
   if (vscode.window.registerWebviewPanelSerializer) {
     context.subscriptions.push(vscode.window.registerWebviewPanelSerializer('dshExplain', {
-      async deserializeWebviewPanel(p) { panel = p; wirePanel(p); }
+      async deserializeWebviewPanel(p) {
+        try { panel = p; wirePanel(p); }
+        catch (e) { try { p.dispose(); } catch (_) {} panel = null; }
+      }
     }));
   }
   const autoOpenPanel = () => {

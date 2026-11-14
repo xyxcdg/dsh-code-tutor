@@ -1,14 +1,15 @@
 {
   "name": "dsh-window",
   "displayName": "学习讲解 + 一键运行",
-  "description": "在 VS Code 里从最基础讲解你正在写的代码，并一键自动识别语言、自动挑编译器运行；可接任意 OpenAI 兼容的 AI 服务",
-  "version": "0.0.5",
+  "description": "在 VS Code 里从最基础讲解你正在写的代码，随时提问；还能一键自动识别语言、自动挑编译器运行；可接任意 OpenAI 兼容的 AI 服务",
+  "version": "0.0.6",
   "publisher": "local",
   "engines": { "vscode": "^1.80.0" },
   "categories": ["Other"],
   "activationEvents": [
     "onStartupFinished",
     "onCommand:dshWindow.open",
+    "onCommand:dshWindow.ask",
     "onCommand:dshWindow.explainFile",
     "onCommand:dshWindow.explainSelection",
     "onCommand:dshWindow.stuck",
@@ -20,17 +21,18 @@
   "main": "./extension.js",
   "contributes": {
     "commands": [
-      { "command": "dshWindow.open", "title": "打开问答窗口", "category": "学习" },
-      { "command": "dshWindow.run", "title": "运行当前文件（自动挑编译器）", "category": "学习" },
+      { "command": "dshWindow.ask", "title": "提问（在「洄·讲解」面板里问基础问题）", "category": "学习" },
       { "command": "dshWindow.explainFile", "title": "讲解当前文件（从基础）", "category": "学习" },
       { "command": "dshWindow.explainSelection", "title": "讲解选中代码（从基础）", "category": "学习" },
       { "command": "dshWindow.stuck", "title": "我卡住了（看看下一步写什么）", "category": "学习" },
+      { "command": "dshWindow.run", "title": "运行当前文件（自动挑编译器）", "category": "学习" },
       { "command": "dshWindow.detectLanguage", "title": "识别当前文件是什么语言", "category": "学习" },
       { "command": "dshWindow.toggleExplainOnSave", "title": "开关：保存时自动讲解", "category": "学习" },
+      { "command": "dshWindow.open", "title": "打开完整 DSH 问答窗口（进阶）", "category": "学习" },
       { "command": "dshWindow.setupAI", "title": "设置AI（选讲解用的接口）", "category": "学习" }
     ],
     "keybindings": [
-      { "command": "dshWindow.open", "key": "ctrl+alt+q" },
+      { "command": "dshWindow.ask", "key": "ctrl+alt+q" },
       { "command": "dshWindow.run", "key": "ctrl+alt+r" },
       { "command": "dshWindow.explainFile", "key": "ctrl+alt+e" },
       { "command": "dshWindow.explainSelection", "key": "ctrl+alt+shift+e" },
@@ -55,7 +57,7 @@
         "dshWindow.explainOnSave": {
           "type": "boolean",
           "default": true,
-          "description": "保存代码文件时，自动在旁边用「洄·讲解」从最基础讲解当前文件（同一文件只在内容变化时才讲解，避免重复消耗）。"
+          "description": "保存代码文件时，自动在旁边用「洄·讲解」从最基础、分四段讲解当前文件（同一文件只在内容变化时才讲解，避免重复消耗）。"
         },
         "dshWindow.autoOpenPanel": {
           "type": "boolean",
@@ -64,8 +66,8 @@
         },
         "dshWindow.explainWhileTyping": {
           "type": "boolean",
-          "default": true,
-          "description": "边写边讲：你停手约 2.5 秒后，自动看看你写到哪、有没有写错、下一步写什么（只在内容变化时触发，单文件 >2 万字符不触发，避免刷屏和浪费）。"
+          "default": false,
+          "description": "边写边讲（默认关）：你停手约 2.5 秒后，自动看看你写到哪、有没有写错、下一步写什么。开着会盖住「基础讲解」，所以默认关闭；想用时再打开。"
         },
         "dshWindow.useGateway": {
           "type": "boolean",
